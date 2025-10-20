@@ -3,7 +3,7 @@ from app.relations import (
     usuarios_campeonatos, usuarios_liga,
     usuarios_questoes, questoes_campeonato,
     questoes_liga, usuario_conquista,
-    professor_escola, usuario_escola  # 🔹 ADIÇÃO
+    professor_escola, usuario_escola
 )
 from datetime import datetime
 
@@ -73,21 +73,21 @@ class Escola(db.Model):
     email = db.Column(db.String(255), nullable=True)
     senha = db.Column(db.String(255), nullable=True)
     atuacao = db.Column(db.String(100), nullable=True)
-    cod_entrada = db.Column(db.String(50), nullable=True)
+    code_escola = db.Column(db.String(50), nullable=True)
 
     # 🔹 Códigos exclusivos para cadastro
     teachercode = db.Column(db.String(50), unique=True, nullable=True)
     studentcode = db.Column(db.String(50), unique=True, nullable=True)
 
-    professores = db.relationship('Professor', secondary=professor_escola, back_populates='escolas')
-    alunos = db.relationship('Usuario', secondary=usuario_escola, back_populates='escolas')
-
+    alunos = db.relationship('Usuario', backref='escola', lazy=True)
+    professores = db.relationship('Professor', backref='escola', lazy=True)
+    
     def to_dict(self):
         return {
             "id": self.id,
             "nick": self.nick,
             "email": self.email,
-            "cod_entrada": self.cod_entrada,
+            "code_escola": self.code_escola,
             "teachercode": self.teachercode,
             "studentcode": self.studentcode,
         }
