@@ -2,43 +2,48 @@ from app import db
 from app.relations import (
     usuarios_campeonatos, usuarios_liga,
     usuarios_questoes, questoes_campeonato,
-    questoes_liga, usuario_conquista, professor_escola
+    questoes_liga, usuario_conquista,
+    professor_escola, usuario_escola  # 🔹 ADIÇÃO
 )
-
 from datetime import datetime
 
 # ---------------------------
 # Model: Usuario
 # ---------------------------
 class Usuario(db.Model):
-    __tablename__ = 'usuario'
     id = db.Column(db.Integer, primary_key=True)
-    nick = db.Column(db.String(150), nullable=False, unique=True)
-    senha = db.Column(db.String(255), nullable=False)
-    nivel = db.Column(db.Integer, default=1)
-    ofensiva = db.Column(db.Integer, default=0)  # campo do diagrama
-    email = db.Column(db.String(255), unique=True, nullable=True)
+    email = db.Column(db.String(100), unique=True)
+    senha = db.Column(db.String(200))
+    nick = db.Column(db.String(50))
+    nivel = db.Column(db.String(50), default='usuario')
+    ofensiva = db.Column(db.Integer, default=0) 
 
-    # relações
+
+
+    # relações    
+    escola_id = db.Column(db.Integer, db.ForeignKey('escola.id'))
     campeonatos = db.relationship('Campeonato', secondary=usuarios_campeonatos, back_populates='usuarios')
     ligas = db.relationship('Liga', secondary=usuarios_liga, back_populates='usuarios')
     questoes = db.relationship('Questao', secondary=usuarios_questoes, back_populates='usuarios')
     conquistas = db.relationship('Conquista', secondary=usuario_conquista, back_populates='usuarios')
+    escolas = db.relationship('Escola', secondary=usuario_escola, back_populates='alunos')  # 🔹 ADIÇÃO
 
     def to_dict(self):
-        return {
-            "id": self.id,
-            "nick": self.nick,
-            "nivel": self.nivel,
-            "ofensiva": self.ofensiva,
-            "email": self.email
-        }
+            return {
+                "id": self.id,
+                "email": self.email,
+                "nick": self.nick,
+                "nivel": self.nivel,
+                "ofensiva": self.ofensiva
+            }
+
 
 # ---------------------------
 # Model: Professor
 # ---------------------------
 class Professor(db.Model):
     __tablename__ = 'professor'
+    escola_id = db.Column(db.Integer, db.ForeignKey('escola.id'))
     id = db.Column(db.Integer, primary_key=True)
     nick = db.Column(db.String(150), nullable=False)
     email = db.Column(db.String(255), unique=True, nullable=False)
@@ -57,27 +62,37 @@ class Professor(db.Model):
             "disciplina": self.disciplina
         }
 
+
 # ---------------------------
 # Model: Escola
 # ---------------------------
 class Escola(db.Model):
     __tablename__ = 'escola'
     id = db.Column(db.Integer, primary_key=True)
-    nick = db.Column(db.String(150), nullable=True)  # aparece na imagem
+    nick = db.Column(db.String(150), nullable=True)
     email = db.Column(db.String(255), nullable=True)
     senha = db.Column(db.String(255), nullable=True)
     atuacao = db.Column(db.String(100), nullable=True)
-    cod_entrada = db.Column(db.String(50), nullable=True)  # Cod.Entrada
+    cod_entrada = db.Column(db.String(50), nullable=True)
+
+    # 🔹 Códigos exclusivos para cadastro
+    teachercode = db.Column(db.String(50), unique=True, nullable=True)
+    studentcode = db.Column(db.String(50), unique=True, nullable=True)
 
     professores = db.relationship('Professor', secondary=professor_escola, back_populates='escolas')
+    alunos = db.relationship('Usuario', secondary=usuario_escola, back_populates='escolas')
 
     def to_dict(self):
         return {
             "id": self.id,
             "nick": self.nick,
             "email": self.email,
-            "cod_entrada": self.cod_entrada
+            "cod_entrada": self.cod_entrada,
+            "teachercode": self.teachercode,
+            "studentcode": self.studentcode,
         }
+
+
 
 # ---------------------------
 # Model: Turma
@@ -90,6 +105,7 @@ class Turma(db.Model):
     atuacao = db.Column(db.String(100), nullable=True)
     disciplina = db.Column(db.String(100), nullable=True)
     professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=True)
+
 
 # ---------------------------
 # Model: Campeonato
@@ -115,6 +131,7 @@ class Campeonato(db.Model):
             "criador_id": self.criador_id
         }
 
+
 # ---------------------------
 # Model: Liga
 # ---------------------------
@@ -129,13 +146,14 @@ class Liga(db.Model):
     def to_dict(self):
         return {"id": self.id, "nome": self.nome}
 
+
 # ---------------------------
 # Model: Questao
 # ---------------------------
 class Questao(db.Model):
     __tablename__ = 'questao'
     id = db.Column(db.Integer, primary_key=True)
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)  # criador
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
     materia = db.Column(db.String(255), nullable=True)
     subtopico = db.Column(db.String(255), nullable=True)
     subsubtopico = db.Column(db.String(255), nullable=True)
@@ -155,6 +173,7 @@ class Questao(db.Model):
             "texto": (self.texto[:200] + "...") if self.texto and len(self.texto) > 200 else self.texto
         }
 
+
 # ---------------------------
 # Model: Conquista
 # ---------------------------
@@ -169,12 +188,12 @@ class Conquista(db.Model):
     def to_dict(self):
         return {"id": self.id, "nome": self.nome, "raridade": self.raridade}
 
+
 # ---------------------------
-# Model: Amigos (opcional - tabela simples)
+# Model: Amigos
 # ---------------------------
 class Amigo(db.Model):
     __tablename__ = 'amigo'
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
     amigo_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
-

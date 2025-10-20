@@ -49,6 +49,13 @@ professor_escola = db.Table(
     db.Column('escola_id', db.Integer, db.ForeignKey('escola.id'), primary_key=True)
 )
 
+# Associação Usuario <-> Escola (alunos matriculados)
+usuario_escola = db.Table(
+    'usuario_escola',
+    db.Column('usuario_id', db.Integer, db.ForeignKey('usuario.id'), primary_key=True),
+    db.Column('escola_id', db.Integer, db.ForeignKey('escola.id'), primary_key=True)
+)
+
 # Amigos (usuários conectados)
 amigos = db.Table(
     'amigos',
