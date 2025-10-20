@@ -1,0 +1,50 @@
+GET http://127.0.0.1:5000/api/escolas
+
+###
+POST http://127.0.0.1:5000/api/escola/criar
+Content-Type: application/json
+
+{"nome": "atena"}
+
+###
+POST http://localhost:5000/api/register
+Content-Type: application/json
+
+{
+  "email": "prof@test.com",
+  "senha": "123456",
+  "nick": "ProfTeste",
+  "school_code": "c7dcf6f6"
+}
+###
+POST http://localhost:5000/api/register
+Content-Type: application/json
+
+{
+  "email": "aluno@test.com",
+  "senha": "123456",
+  "nick": "AlunoTeste",
+  "school_code": "dbcc31a3"
+}
+
+###
+POST http://localhost:5000/api/login
+Content-Type: application/json
+
+{
+  "email": "aluno@test.com",
+  "senha": "123456"
+}
+
+###
+POST http://localhost:5000/api/login
+Content-Type: application/json
+
+{
+  "email": "prof@test.com",
+  "senha": "123456"
+}
+
+###
+GET http://127.0.0.1:5000/api/escola/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJwcm9mQHRlc3QuY29tIiwibmljayI6IlByb2ZUZXN0ZSIsInVzZXJfdHlwZSI6InByb2Zlc3NvciIsImV4cCI6MTc2MDk5MTI3N30.79PiY3sVPG3boNE9VnEE-r3vTVSzKOGJ1X0rVlvMEBo
