@@ -41,7 +41,7 @@ from uuid import uuid4
 
 def init_routes(app):
     # =====================================================
-    # ============== TESTE CRIAR ESCOLA ===================
+    # ============== ESCOLAS ==============================
     # =====================================================
 
     @app.route('/api/escolas', methods=['GET'])
@@ -51,6 +51,7 @@ def init_routes(app):
             'status': True,
             'escolas': [e.to_dict() for e in escolas]
         }), 200
+
 
     @app.route('/api/escola/criar', methods=['POST'])
     def criar_escola_com_tokens():
@@ -64,11 +65,13 @@ def init_routes(app):
             return jsonify({'status': False, 'message': 'Nome da escola é obrigatório.'}), 400
 
         # gera tokens únicos
+        code_escola = str(uuid4())[:8]
         teachercode = str(uuid4())[:8]
         studentcode = str(uuid4())[:8]
 
         escola = Escola(
             nick=nome,
+            code_escola=code_escola,
             teachercode=teachercode,
             studentcode=studentcode
         )
@@ -81,10 +84,61 @@ def init_routes(app):
             'escola': {
                 'id': escola.id,
                 'nome': escola.nick,
+                'code_escola': escola.code_escola,
                 'teachercode': escola.teachercode,
                 'studentcode': escola.studentcode
             }
         }), 201
+
+
+    @app.route('/api/escola/join', methods=['POST'])
+    @jwt_required
+    def join_escola():
+        """
+        Aluno entra em escola via código.
+        Espera JSON: { "school_code": "..." }
+        """
+        user = request.user
+        if user.get('user_type') != 'usuario':
+            return jsonify({'erro': 'Apenas alunos podem entrar em escolas.'}), 403
+
+        data = request.get_json() or {}
+        cod = data.get('school_code')
+        if not cod:
+            return jsonify({'erro': 'Código de entrada necessário.'}), 400
+
+        # busca por teachercode OU studentcode
+        escola = Escola.query.filter(
+            (Escola.teachercode == cod) | (Escola.studentcode == cod)
+        ).first()
+
+        if not escola:
+            return jsonify({'erro': 'Código inválido.'}), 404
+
+        aluno = Usuario.query.get(user.get('id'))
+        aluno.escola_id = escola.id
+        db.session.commit()
+
+        return jsonify({'status': True, 'message': f'Aluno vinculado à escola {escola.nick}.'}), 200
+
+
+    @app.route('/api/escola/<int:escola_id>', methods=['GET'])
+    @jwt_required
+    def get_escola(escola_id):
+        escola = Escola.query.get(escola_id)
+        if not escola:
+            return jsonify({'erro': 'Escola não encontrada'}), 404
+
+        professores = [p.to_dict() for p in escola.professores]
+        alunos = [a.to_dict() for a in escola.alunos]
+
+        return jsonify({
+            'status': True,
+            'escola': escola.to_dict(),
+            'professores': professores,
+            'alunos': alunos
+        }), 200
+
 
 
 
@@ -135,7 +189,7 @@ def init_routes(app):
 
         # Decide tipo de usuário conforme o código
         if escola.teachercode == school_code:
-            novo = Professor(email=email, senha=hashed, nome=nick, escola_id=escola.id)
+            novo = Professor(email=email, senha=hashed, nick=nick, escola_id=escola.id)
             role = "professor"
         else:
             novo = Usuario(email=email, senha=hashed, nick=nick, escola_id=escola.id)
@@ -189,95 +243,6 @@ def init_routes(app):
             "user_type": tipo,
             "user_data": conta.to_dict()
         }), 200
-
-
-    # =====================================================
-    # ============== ESCOLAS ===============================
-    # =====================================================
-    @app.route('/api/escola', methods=['POST'])
-    @jwt_required
-    def criar_escola():
-        """
-        Cria uma nova escola (somente professores)
-        Espera JSON: { "nome": "...", "cod_entrada": "..." }
-        """
-        user = request.user
-        if user.get('user_type') != 'professor':
-            return jsonify({'erro': 'Apenas professores podem criar escolas.'}), 403
-
-        data = request.get_json() or {}
-        nome = data.get('nome')
-        cod = data.get('cod_entrada')
-
-        if not nome:
-            return jsonify({'erro': 'Nome da escola obrigatório.'}), 400
-
-        # Cria a escola
-        escola = Escola(nick=nome, cod_entrada=cod)
-        db.session.add(escola)
-        db.session.commit()
-
-        # Vincula o professor criador
-        prof = Professor.query.get(user.get('id'))
-        if prof and escola not in prof.escolas:
-            prof.escolas.append(escola)
-            db.session.commit()
-
-        return jsonify({
-            'status': True,
-            'message': 'Escola criada com sucesso.',
-            'escola': escola.to_dict()
-        }), 201
-
-
-    @app.route('/api/escola/join', methods=['POST'])
-    @jwt_required
-    def join_escola():
-        """
-        Aluno entra em escola via código.
-        Espera JSON: { "cod_entrada": "..." }
-        """
-        user = request.user
-        if user.get('user_type') != 'usuario':
-            return jsonify({'erro': 'Apenas alunos podem entrar em escolas.'}), 403
-
-        data = request.get_json() or {}
-        cod = data.get('cod_entrada')
-        if not cod:
-            return jsonify({'erro': 'Código de entrada necessário.'}), 400
-
-        escola = Escola.query.filter_by(cod_entrada=cod).first()
-        if not escola:
-            return jsonify({'erro': 'Código inválido.'}), 404
-
-        aluno = Usuario.query.get(user.get('id'))
-        if escola not in aluno.escolas:
-            aluno.escolas.append(escola)
-            db.session.commit()
-
-        return jsonify({'status': True, 'message': f'Aluno vinculado à escola {escola.nick}.'}), 200
-
-
-    @app.route('/api/escola/<int:escola_id>', methods=['GET'])
-    @jwt_required
-    def get_escola(escola_id):
-        """
-        Retorna detalhes da escola (professores e alunos).
-        """
-        escola = Escola.query.get(escola_id)
-        if not escola:
-            return jsonify({'erro': 'Escola não encontrada'}), 404
-
-        professores = [p.to_dict() for p in escola.professores]
-        alunos = [a.to_dict() for a in escola.alunos]
-
-        return jsonify({
-            'status': True,
-            'escola': escola.to_dict(),
-            'professores': professores,
-            'alunos': alunos
-        }), 200
-
 
     # =====================================================
     # ============== LIGAS, QUESTÕES, CAMPEONATOS =========
@@ -371,6 +336,26 @@ def init_routes(app):
         }), 200
 
     @app.route("/api/me", methods=["GET"])
+    @jwt_required
     def me():
-        # lógica para retornar os dados do usuário logado
-        return {"user": Usuario.to_dict()}
+        user_data = request.user  # dados vindos do token JWT
+        user_id = user_data.get("id")
+        user_type = user_data.get("user_type")
+
+        # busca o usuário correto no banco
+        if user_type == "professor":
+            user = Professor.query.get(user_id)
+        else:
+            user = Usuario.query.get(user_id)
+
+        if not user:
+            return jsonify({
+                "status": False,
+                "message": "Usuário não encontrado"
+            }), 404
+
+        return jsonify({
+            "status": True,
+            "user_type": user_type,
+            "user": user.to_dict()
+        }), 200
