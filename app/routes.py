@@ -6,7 +6,7 @@ import os
 import functools
 
 from app import db
-from app.models import Usuario, Professor, Escola, Campeonato, Liga, Questao, Conquista
+from app.models import Usuario, Professor, Escola, Campeonato, Liga, Questao
 
 # =====================================================
 # CONFIG
@@ -201,26 +201,26 @@ def init_routes(app):
         if conta.escola_id:
             escola = Escola.query.get(conta.escola_id)
             if escola:
-                nome_escola = escola.nick  # Apenas o nome da escola
+                nome_escola = escola.nick
 
         payload = {
             "id": conta.id,
             "email": conta.email,
             "nick": getattr(conta, "nick", None),
             "user_type": tipo,
-            "escola": nome_escola,  # Apenas o nome
+            "escola": nome_escola,  
             "exp": datetime.utcnow() + timedelta(hours=6)
         }
+        
 
         token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
-        # Retorna resposta JSON com nome da escola
         return jsonify({
             "status": True,
             "token": token,
             "user_type": tipo,
             "user_data": conta.to_dict(),
-            "escola": nome_escola  # Apenas o nome
+            "escola": nome_escola  
         }), 200
 
 
@@ -318,7 +318,7 @@ def init_routes(app):
     @app.route("/api/me", methods=["GET"])
     @jwt_required
     def me():
-        user_data = request.user  # Dados do usuário vindos do token JWT
+        user_data = request.user
         user_id = user_data.get("id")
         user_type = user_data.get("user_type")
 
@@ -333,16 +333,18 @@ def init_routes(app):
                 "message": "Usuário não encontrado"
             }), 404
 
-        # Busca apenas o nome da escola
-        nome_escola = None
+        escola_data = None
         if user.escola_id:
             escola = Escola.query.get(user.escola_id)
             if escola:
-                nome_escola = escola.nick  # Apenas o nome da escola
+                escola_data = {
+                    "id": escola.id,
+                    "nick": escola.nick,
+                }
 
         return jsonify({
             "status": True,
             "user_type": user_type,
             "user": user.to_dict(),
-            "escola": nome_escola  # Apenas o nome
+            "escola": escola_data
         }), 200
