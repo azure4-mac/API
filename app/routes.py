@@ -91,39 +91,7 @@ def init_routes(app):
         }), 201
 
 
-    @app.route('/api/escola/join', methods=['POST'])
-    @jwt_required
-    def join_escola():
-        """
-        Aluno entra em escola via código.
-        Espera JSON: { "school_code": "..." }
-        """
-        user = request.user
-        if user.get('user_type') != 'usuario':
-            return jsonify({'erro': 'Apenas alunos podem entrar em escolas.'}), 403
-
-        data = request.get_json() or {}
-        cod = data.get('school_code')
-        if not cod:
-            return jsonify({'erro': 'Código de entrada necessário.'}), 400
-
-        # busca por teachercode OU studentcode
-        escola = Escola.query.filter(
-            (Escola.teachercode == cod) | (Escola.studentcode == cod)
-        ).first()
-
-        if not escola:
-            return jsonify({'erro': 'Código inválido.'}), 404
-
-        aluno = Usuario.query.get(user.get('id'))
-        aluno.escola_id = escola.id
-        db.session.commit()
-
-        return jsonify({'status': True, 'message': f'Aluno vinculado à escola {escola.nick}.'}), 200
-
-
     @app.route('/api/escola/<int:escola_id>', methods=['GET'])
-    @jwt_required
     def get_escola(escola_id):
         escola = Escola.query.get(escola_id)
         if not escola:
@@ -210,7 +178,7 @@ def init_routes(app):
     def login():
         """
         Espera JSON: { "email": "...", "senha": "..." }
-        Retorna token JWT + dados do usuário
+        Retorna token JWT + dados do usuário + nome da escola
         """
         data = request.get_json() or {}
         email = data.get('email')
@@ -228,21 +196,33 @@ def init_routes(app):
         if not conta or not check_password_hash(conta.senha, senha):
             return jsonify({"status": False, "message": "Credenciais inválidas."}), 401
 
+        # Busca apenas o nome da escola
+        nome_escola = None
+        if conta.escola_id:
+            escola = Escola.query.get(conta.escola_id)
+            if escola:
+                nome_escola = escola.nick  # Apenas o nome da escola
+
         payload = {
             "id": conta.id,
             "email": conta.email,
             "nick": getattr(conta, "nick", None),
             "user_type": tipo,
+            "escola": nome_escola,  # Apenas o nome
             "exp": datetime.utcnow() + timedelta(hours=6)
         }
+
         token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
+        # Retorna resposta JSON com nome da escola
         return jsonify({
             "status": True,
             "token": token,
             "user_type": tipo,
-            "user_data": conta.to_dict()
+            "user_data": conta.to_dict(),
+            "escola": nome_escola  # Apenas o nome
         }), 200
+
 
     # =====================================================
     # ============== LIGAS, QUESTÕES, CAMPEONATOS =========
@@ -338,11 +318,10 @@ def init_routes(app):
     @app.route("/api/me", methods=["GET"])
     @jwt_required
     def me():
-        user_data = request.user  # dados vindos do token JWT
+        user_data = request.user  # Dados do usuário vindos do token JWT
         user_id = user_data.get("id")
         user_type = user_data.get("user_type")
 
-        # busca o usuário correto no banco
         if user_type == "professor":
             user = Professor.query.get(user_id)
         else:
@@ -354,8 +333,16 @@ def init_routes(app):
                 "message": "Usuário não encontrado"
             }), 404
 
+        # Busca apenas o nome da escola
+        nome_escola = None
+        if user.escola_id:
+            escola = Escola.query.get(user.escola_id)
+            if escola:
+                nome_escola = escola.nick  # Apenas o nome da escola
+
         return jsonify({
             "status": True,
             "user_type": user_type,
-            "user": user.to_dict()
+            "user": user.to_dict(),
+            "escola": nome_escola  # Apenas o nome
         }), 200
