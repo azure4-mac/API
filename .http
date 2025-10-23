@@ -14,7 +14,7 @@ Content-Type: application/json
   "email": "prof@test.com",
   "senha": "123456",
   "nick": "ProfTeste",
-  "school_code": "c7dcf6f6"
+  "school_code": "4c2f9c75"
 }
 ###
 POST http://localhost:5000/api/register
@@ -24,7 +24,7 @@ Content-Type: application/json
   "email": "aluno@test.com",
   "senha": "123456",
   "nick": "AlunoTeste",
-  "school_code": "dbcc31a3"
+  "school_code": "b9f6c0e4"
 }
 
 ###
